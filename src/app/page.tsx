@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Dummy product data
 const products = [
@@ -39,21 +40,53 @@ const products = [
   },
 ];
 
+type CartItem = {
+  productId: number;
+  size: string;
+  quantity: number;
+};
+
 export default function Home() {
-  const [cart, setCart] = useState<number[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [checkoutInfo, setCheckoutInfo] = useState({
     name: "",
     address: "",
     payment: "",
   });
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
+  const [selectedSize, setSelectedSize] = useState<{ [productId: number]: string }>({});
+  const [itemQuantities, setItemQuantities] = useState<{ [productId: number]: number }>({});
+
 
   const addToCart = (productId: number) => {
-    setCart([...cart, productId]);
+    const size = selectedSize[productId] || "M";
+    const quantity = itemQuantities[productId] || 1;
+
+    const existingCartItem = cart.find(item => item.productId === productId && item.size === size);
+
+    if (existingCartItem) {
+      // If the item already exists in the cart with the same size, update the quantity
+      const updatedCart = cart.map(item =>
+        item.productId === productId && item.size === size
+          ? { ...item, quantity: item.quantity + quantity }
+          : item
+      );
+      setCart(updatedCart);
+    } else {
+      // If the item doesn't exist, add it to the cart
+      setCart([...cart, { productId, size, quantity }]);
+    }
+
+    // Reset quantity for the product
+    setItemQuantities(prevQuantities => ({
+      ...prevQuantities,
+      [productId]: 1, // Reset to 1 after adding to cart
+    }));
   };
 
-  const removeFromCart = (productId: number) => {
-    setCart(cart.filter((id) => id !== productId));
+
+  const removeFromCart = (productId: number, size: string) => {
+    setCart(cart.filter((item) => item.productId !== productId || item.size !== size));
   };
 
   const handleCheckout = () => {
@@ -76,8 +109,24 @@ export default function Home() {
       if (success) {
         setCart([]);
         setCheckoutInfo({ name: "", address: "", payment: "" });
+        setItemQuantities({});
+        setSelectedSize({});
       }
     }, 1500);
+  };
+
+  const handleQuantityIncrease = (productId: number) => {
+    setItemQuantities(prevQuantities => ({
+      ...prevQuantities,
+      [productId]: (prevQuantities[productId] || 1) + 1,
+    }));
+  };
+
+  const handleQuantityDecrease = (productId: number) => {
+    setItemQuantities(prevQuantities => ({
+      ...prevQuantities,
+      [productId]: Math.max(1, (prevQuantities[productId] || 1) - 1),
+    }));
   };
 
   return (
@@ -101,10 +150,67 @@ export default function Home() {
                   className="mb-3 rounded-md"
                 />
                 <p className="text-lg font-semibold">${product.price}</p>
-                {cart.includes(product.id) ? (
+
+                {/* Size Selection */}
+                <div className="mb-3">
+                  <Label htmlFor={`size-${product.id}`} className="block text-sm font-medium text-gray-700">
+                    Size
+                  </Label>
+                  <Select
+                    id={`size-${product.id}`}
+                    value={selectedSize[product.id] || "M"}
+                    onValueChange={(value) =>
+                      setSelectedSize({ ...selectedSize, [product.id]: value })
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a size" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="S">S (UK)</SelectItem>
+                      <SelectItem value="M">M (UK)</SelectItem>
+                      <SelectItem value="L">L (UK)</SelectItem>
+                      <SelectItem value="XL">XL (UK)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                 {/* Quantity Selection */}
+                <div className="mb-3 flex items-center space-x-2">
+                  <Label htmlFor={`quantity-${product.id}`} className="block text-sm font-medium text-gray-700">
+                    Quantity:
+                  </Label>
+                  <div className="flex items-center">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleQuantityDecrease(product.id)}
+                      disabled={itemQuantities[product.id] === 1}
+                    >
+                      -
+                    </Button>
+                    <Input
+                      type="number"
+                      id={`quantity-${product.id}`}
+                      value={itemQuantities[product.id] || 1}
+                      className="w-16 text-center"
+                      readOnly
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleQuantityIncrease(product.id)}
+                    >
+                      +
+                    </Button>
+                  </div>
+                </div>
+
+
+                {cart.find(item => item.productId === product.id && item.size === (selectedSize[product.id] || "M")) ? (
                   <Button
                     variant="destructive"
-                    onClick={() => removeFromCart(product.id)}
+                    onClick={() => removeFromCart(product.id, selectedSize[product.id] || "M")}
                   >
                     Remove from Cart
                   </Button>
@@ -128,12 +234,19 @@ export default function Home() {
           <p>Your cart is empty.</p>
         ) : (
           <ul className="list-disc pl-5">
-            {cart.map((productId) => {
-              const product = products.find((p) => p.id === productId);
+            {cart.map((item) => {
+              const product = products.find((p) => p.id === item.productId);
               return (
                 product && (
-                  <li key={product.id} className="mb-2">
-                    {product.name} - ${product.price}
+                  <li key={`${product.id}-${item.size}`} className="mb-2">
+                    {product.name} - Size: {item.size}, Quantity: {item.quantity} - ${product.price * item.quantity}
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => removeFromCart(product.id, item.size)}
+                    >
+                      Remove
+                    </Button>
                   </li>
                 )
               );
