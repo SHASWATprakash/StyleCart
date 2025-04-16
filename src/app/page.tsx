@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 // Dummy product data
 const products = [
@@ -23,6 +24,9 @@ const products = [
     description: "A timeless classic for any wardrobe.",
     price: 29.99,
     imageUrl: "https://picsum.photos/200/300",
+    gender: "Men",
+    category: "Shirts",
+    availableColors: ["White", "Blue", "Black"],
   },
   {
     id: 2,
@@ -30,6 +34,9 @@ const products = [
     description: "Comfortable and versatile black jeans.",
     price: 59.99,
     imageUrl: "https://picsum.photos/200/300",
+    gender: "Women",
+    category: "Jeans",
+    availableColors: ["Black", "Gray"],
   },
   {
     id: 3,
@@ -37,6 +44,9 @@ const products = [
     description: "Add a touch of elegance with this silk scarf.",
     price: 39.99,
     imageUrl: "https://picsum.photos/200/300",
+    gender: "Women",
+    category: "Accessories",
+    availableColors: ["Red", "Green", "Purple"],
   },
 ];
 
@@ -44,6 +54,7 @@ type CartItem = {
   productId: number;
   size: string;
   quantity: number;
+  color: string; // Added color to the cart item
 };
 
 export default function Home() {
@@ -56,25 +67,27 @@ export default function Home() {
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<{ [productId: number]: string }>({});
   const [itemQuantities, setItemQuantities] = useState<{ [productId: number]: number }>({});
+  const [selectedColor, setSelectedColor] = useState<{ [productId: number]: string }>({}); // State for selected color
 
 
   const addToCart = (productId: number) => {
     const size = selectedSize[productId] || "M";
     const quantity = itemQuantities[productId] || 1;
+    const color = selectedColor[productId] || products.find(p => p.id === productId)?.availableColors?.[0] || "N/A"; // Get selected color
 
-    const existingCartItem = cart.find(item => item.productId === productId && item.size === size);
+    const existingCartItem = cart.find(item => item.productId === productId && item.size === size && item.color === color);
 
     if (existingCartItem) {
-      // If the item already exists in the cart with the same size, update the quantity
+      // If the item already exists in the cart with the same size and color, update the quantity
       const updatedCart = cart.map(item =>
-        item.productId === productId && item.size === size
+        item.productId === productId && item.size === size && item.color === color
           ? { ...item, quantity: item.quantity + quantity }
           : item
       );
       setCart(updatedCart);
     } else {
       // If the item doesn't exist, add it to the cart
-      setCart([...cart, { productId, size, quantity }]);
+      setCart([...cart, { productId, size, quantity, color }]);
     }
 
     // Reset quantity for the product
@@ -85,8 +98,8 @@ export default function Home() {
   };
 
 
-  const removeFromCart = (productId: number, size: string) => {
-    setCart(cart.filter((item) => item.productId !== productId || item.size !== size));
+  const removeFromCart = (productId: number, size: string, color: string) => {
+    setCart(cart.filter((item) => item.productId !== productId || item.size !== size || item.color !== color));
   };
 
   const handleCheckout = () => {
@@ -111,6 +124,7 @@ export default function Home() {
         setCheckoutInfo({ name: "", address: "", payment: "" });
         setItemQuantities({});
         setSelectedSize({});
+        setSelectedColor({});
       }
     }, 1500);
   };
@@ -151,6 +165,16 @@ export default function Home() {
                 />
                 <p className="text-lg font-semibold">${product.price}</p>
 
+                {/* Gender and Category */}
+                <div className="mb-2">
+                  <p>
+                    <span className="font-semibold">Gender:</span> {product.gender}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Category:</span> {product.category}
+                  </p>
+                </div>
+
                 {/* Size Selection */}
                 <div className="mb-3">
                   <Label htmlFor={`size-${product.id}`} className="block text-sm font-medium text-gray-700">
@@ -173,6 +197,23 @@ export default function Home() {
                       <SelectItem value="XL">XL (UK)</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                {/* Color Selection */}
+                <div className="mb-3">
+                  <Label className="block text-sm font-medium text-gray-700">
+                    Color
+                  </Label>
+                  <RadioGroup defaultValue={product.availableColors[0]} className="flex gap-2">
+                    {product.availableColors.map((color) => (
+                      <div key={color} className="flex items-center space-x-2">
+                        <RadioGroupItem value={color} id={`color-${product.id}-${color}`} onClick={() => setSelectedColor({ ...selectedColor, [product.id]: color })} />
+                        <Label htmlFor={`color-${product.id}-${color}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                          {color}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
                 </div>
 
                  {/* Quantity Selection */}
@@ -207,10 +248,10 @@ export default function Home() {
                 </div>
 
 
-                {cart.find(item => item.productId === product.id && item.size === (selectedSize[product.id] || "M")) ? (
+                {cart.find(item => item.productId === product.id && item.size === (selectedSize[product.id] || "M") && item.color === (selectedColor[product.id] || product.availableColors[0])) ? (
                   <Button
                     variant="destructive"
-                    onClick={() => removeFromCart(product.id, selectedSize[product.id] || "M")}
+                    onClick={() => removeFromCart(product.id, selectedSize[product.id] || "M", selectedColor[product.id] || product.availableColors[0])}
                   >
                     Remove from Cart
                   </Button>
@@ -238,12 +279,12 @@ export default function Home() {
               const product = products.find((p) => p.id === item.productId);
               return (
                 product && (
-                  <li key={`${product.id}-${item.size}`} className="mb-2">
-                    {product.name} - Size: {item.size}, Quantity: {item.quantity} - ${product.price * item.quantity}
+                  <li key={`${product.id}-${item.size}-${item.color}`} className="mb-2">
+                    {product.name} - Size: {item.size}, Color: {item.color}, Quantity: {item.quantity} - ${product.price * item.quantity}
                     <Button
                       variant="link"
                       size="sm"
-                      onClick={() => removeFromCart(product.id, item.size)}
+                      onClick={() => removeFromCart(product.id, item.size, item.color)}
                     >
                       Remove
                     </Button>
