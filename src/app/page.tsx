@@ -166,7 +166,7 @@ export default function Home() {
   };
 
   return (
-    <SidebarProvider>
+    <>
         <Sidebar>
           <SidebarHeader>
             <SidebarTrigger>
@@ -391,6 +391,6 @@ export default function Home() {
             </div>
           </section>
         </div>
-    </SidebarProvider>
+    </>
   );
 }
