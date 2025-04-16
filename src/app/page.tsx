@@ -23,6 +23,7 @@ import {
   SidebarProvider,
   SidebarSeparator,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Icons } from "@/components/icons";
 
@@ -79,6 +80,8 @@ export default function Home() {
   const [itemQuantities, setItemQuantities] = useState<{ [productId: number]: number }>({});
   const [selectedColor, setSelectedColor] = useState<{ [productId: number]: string }>({}); // State for selected color
   const [genderFilter, setGenderFilter] = useState<string | null>(null);
+
+  const { setOpenMobile } = useSidebar();
 
   const filteredProducts = genderFilter
     ? products.filter((product) => product.gender === genderFilter)
@@ -157,6 +160,11 @@ export default function Home() {
     }));
   };
 
+  const handleGenderFilter = (gender: string | null) => {
+    setGenderFilter(gender);
+    setOpenMobile(false); // Close the sidebar
+  };
+
   return (
     <SidebarProvider>
         <Sidebar>
@@ -170,21 +178,21 @@ export default function Home() {
             <Button
               variant="outline"
               className="w-full justify-start"
-              onClick={() => setGenderFilter(null)}
+              onClick={() => handleGenderFilter(null)}
             >
               All
             </Button>
             <Button
               variant="outline"
               className="w-full justify-start"
-              onClick={() => setGenderFilter("Men")}
+              onClick={() => handleGenderFilter("Men")}
             >
               Men
             </Button>
             <Button
               variant="outline"
               className="w-full justify-start"
-              onClick={() => setGenderFilter("Women")}
+              onClick={() => handleGenderFilter("Women")}
             >
               Women
             </Button>
